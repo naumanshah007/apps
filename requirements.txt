@@ -1,0 +1,10 @@
+streamlit
+pandas
+openpyxl
+pytesseract
+Pillow
+easyocr
+reportlab
+python-dotenv
+pyyaml
+validators
