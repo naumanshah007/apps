@@ -16,7 +16,7 @@ except Exception:
     easyocr = None
 
 RULES_XLSX = os.path.abspath("./data/screening_rules_master_integrated.xlsx")
-IMAGES_DIR = os.path.abspath("./images")
+IMAGES_DIR = os.path.abspath("./data")
 
 COLUMNS = [
     "RuleID",
@@ -44,10 +44,13 @@ def ensure_rules_workbook() -> None:
 def run_tesseract(image_path: str) -> str:
     if pytesseract is None:
         return ""
-    img = Image.open(image_path)
-    custom_oem_psm_config = "--oem 3 --psm 6"
-    text = pytesseract.image_to_string(img, config=custom_oem_psm_config)
-    return text
+    try:
+        img = Image.open(image_path)
+        custom_oem_psm_config = "--oem 3 --psm 6"
+        text = pytesseract.image_to_string(img, config=custom_oem_psm_config)
+        return text
+    except Exception:
+        return ""
 
 
 def run_easyocr(image_path: str, reader=None) -> str:
@@ -55,14 +58,29 @@ def run_easyocr(image_path: str, reader=None) -> str:
         return ""
     if reader is None:
         reader = easyocr.Reader(["en"], gpu=False)
-    results = reader.readtext(image_path, detail=0, paragraph=True)
-    return "\n".join(results)
+    try:
+        results = reader.readtext(image_path, detail=0, paragraph=True)
+        return "\n".join(results)
+    except Exception:
+        return ""
+
+
+def _list_image_files(directory: str) -> List[str]:
+    if not os.path.isdir(directory):
+        return []
+    files = [f for f in os.listdir(directory) if f.lower().endswith(".jpg")]
+    # Sort numerically when filenames are like 1.jpg, 2.jpg, ...; fallback to name sort
+    def _key(name: str):
+        stem = os.path.splitext(name)[0]
+        return (0, int(stem)) if stem.isdigit() else (1, name.lower())
+
+    return sorted(files, key=_key)
 
 
 def ocr_all() -> Dict[str, str]:
-    files = [
-        "1.jpg","2.jpg","3.jpg","4.jpg","5.jpg","6.jpg","7.jpg","8.jpg","9.jpg","10.jpg","table.jpg"
-    ]
+    files = _list_image_files(IMAGES_DIR)
+    if not files:
+        print(f"No .jpg files found in {IMAGES_DIR}")
     out: Dict[str, str] = {}
     reader = None
     if easyocr is not None:
